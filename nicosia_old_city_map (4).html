@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Nicosia Old City — Top 10 walking map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body,html{height:100%;margin:0;padding:0}
+    #map{height:100%;width:100%}
+    .marker-number{display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:#2A6BD6;color:#fff;font-weight:700;border:2px solid #fff;box-shadow:0 1px 2px rgba(0,0,0,.4)}
+    .leaflet-popup-content{max-width:240px}
+    .sidebar{position:absolute;top:10px;left:10px;z-index:4000;background:rgba(255,255,255,0.95);padding:10px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.2);max-width:320px;transition:transform 0.3s ease}
+    .sidebar h2{margin:0 0 6px 0;font-size:16px}
+    .place{margin:6px 0;padding:6px;border-left:3px solid #eee;cursor:pointer}
+    .toggle-sidebar{position:absolute;top:10px;left:340px;z-index:5000;background:#2A6BD6;color:#fff;border:none;padding:6px 10px;border-radius:4px;cursor:pointer;font-weight:bold}
+    .sidebar.hidden{transform:translateX(-110%)}
+    .locate-btn{position:absolute;bottom:20px;right:20px;z-index:5000;background:#2A6BD6;color:#fff;border:none;padding:8px 12px;border-radius:4px;cursor:pointer;font-weight:bold}
+  </style>
+</head>
+<body>
+<div class="sidebar" id="sidebar">
+  <h2>Nicosia (Old City) — Quick tour</h2>
+  <div>Click a number on the map, or in this list, to open a short description and directions.</div>
+  <div id="list"></div>
+</div>
+<button class="toggle-sidebar" onclick="toggleSidebar()">Hide List</button>
+<button class="locate-btn" onclick="startLiveLocation()">My Location</button>
+<div id="map"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  const map = L.map('map').setView([35.1738, 33.3628], 15);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    maxZoom: 19, attribution: '© OpenStreetMap contributors'
+  }).addTo(map);
+
+  const places = [
+    {id:1,name:'Famagusta Gate (Venetian Gate)',lat:35.174461,lon:33.370908,desc:'One of the main gates in the Venetian walls — impressive Venetian-era architecture and gateway into the walled city.'},
+    {id:2,name:'Ledra Street / Crossing',lat:35.17444,lon:33.36139,desc:'A bustling pedestrian shopping street; historic crossing point through the Green Line. Great for people-watching and cafes.'},
+    {id:3,name:"Büyük Han (Great Inn)",lat:35.176376,lon:33.362773,desc:'A restored 16th-century caravanserai with a courtyard full of cafes, craft shops and small galleries — must-see.'},
+    {id:4,name:"Selimiye Mosque (former St. Sophia Cathedral)",lat:35.176389,lon:33.362500,desc:'Impressive Gothic cathedral converted to a mosque — a striking blend of architectural styles and history.'},
+    {id:5,name:'Shacolas Tower Museum & Observatory',lat:35.171101,lon:33.360253,desc:'Visit the observation deck for panoramic views of Nicosia and the buffer zone; small museum inside.'},
+    {id:6,name:'Laïki Geitonia (Traditional Neighbourhood)',lat:35.1699,lon:33.362285,desc:'Narrow lanes, restored houses, craft shops and tavernas — perfect for a relaxed stroll.'},
+    {id:7,name:'Leventis Municipal Museum',lat:35.1706,lon:33.36147,desc:'Local museum telling the history of Nicosia from ancient times to modern days; free entry often available.'},
+    {id:8,name:'Ömeriye Mosque & Hamam',lat:35.171894,lon:33.365381,desc:'A 16th-century mosque built over a former Augustinian church — near a restored traditional hamam.'},
+    {id:9,name:"Archbishop's Palace & Byzantine Museum",lat:35.172821,lon:33.36815,desc:'Houses the Byzantine Museum with a superb collection of icons and ecclesiastical art.'},
+    {id:10,name:'Sarayönü / Atatürk Square (Venetian Column)',lat:35.1739,lon:33.3651,desc:'Central square of the walled city with the Venetian column and Ottoman-era fountain. Great meeting point.'}
+  ];
+
+  const markers = {};
+  const listEl = document.getElementById('list');
+
+  places.forEach(p=>{
+    const icon = L.divIcon({className:'custom-div-icon', html:`<div class="marker-number">${p.id}</div>`, iconSize:[28,28], iconAnchor:[14,28]});
+    const m = L.marker([p.lat,p.lon],{icon:icon}).addTo(map);
+    m.bindPopup(`<strong>${p.id}. ${p.name}</strong><br>${p.desc}`);
+    markers[p.id]=m;
+    const d = document.createElement('div');
+    d.className='place';
+    d.innerHTML = `<b>${p.id}</b> <strong>${p.name}</strong><div style="font-size:13px;margin-top:4px">${p.desc}</div>`;
+    d.onclick = ()=>{
+      map.setView([p.lat,p.lon],17);
+      markers[p.id].openPopup();
+      hideSidebar();
+    };
+    listEl.appendChild(d);
+  });
+
+  const group = new L.featureGroup(Object.values(markers));
+  map.fitBounds(group.getBounds().pad(0.15));
+
+  function toggleSidebar(){
+    const sidebar = document.getElementById('sidebar');
+    sidebar.classList.toggle('hidden');
+    document.querySelector('.toggle-sidebar').innerText = sidebar.classList.contains('hidden') ? 'Show List' : 'Hide List';
+  }
+
+  function hideSidebar(){
+    const sidebar = document.getElementById('sidebar');
+    sidebar.classList.add('hidden');
+    document.querySelector('.toggle-sidebar').innerText = 'Show List';
+  }
+
+  let userMarker = null;
+  function startLiveLocation(){
+    if (navigator.geolocation) {
+      navigator.geolocation.watchPosition(pos => {
+        const latlng = [pos.coords.latitude, pos.coords.longitude];
+        if (!userMarker) {
+          userMarker = L.circleMarker(latlng, {
+            radius: 8,
+            fillColor: '#136AEC',
+            color: '#fff',
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.9
+          }).addTo(map).bindPopup('You are here');
+          map.setView(latlng, 16);
+        } else {
+          userMarker.setLatLng(latlng);
+        }
+      }, err => {
+        alert('Unable to retrieve your location: ' + err.message);
+      }, {enableHighAccuracy: true});
+    } else {
+      alert('Geolocation is not supported by your browser');
+    }
+  }
+</script>
+</body>
+</html>
