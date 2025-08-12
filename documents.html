@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Nicosia Old City Map with More Info</title>
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+  <style>
+    body,
+    html {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    #map {
+      height: 100%;
+      width: 100%;
+    }
+    .marker-number {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #2a6bd6;
+      color: #fff;
+      font-weight: 700;
+      border: 2px solid #fff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+    }
+    .leaflet-popup-content {
+      max-width: 300px;
+    }
+    .sidebar {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 4000;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+      max-width: 320px;
+      transition: transform 0.3s ease;
+      overflow-y: auto;
+      max-height: 90vh;
+    }
+    .sidebar h2 {
+      margin: 0 0 6px 0;
+      font-size: 16px;
+    }
+    .place {
+      margin: 6px 0;
+      padding: 6px;
+      border-left: 3px solid #eee;
+      cursor: pointer;
+    }
+    .toggle-sidebar {
+      position: absolute;
+      top: 10px;
+      left: 340px;
+      z-index: 5000;
+      background: #2a6bd6;
+      color: #fff;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .locate-btn {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      z-index: 5000;
+      background: #2a6bd6;
+      color: #fff;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .more-btn {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 4px 8px;
+      background: #2a6bd6;
+      color: #fff;
+      font-weight: 600;
+      border-radius: 4px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .close-btn {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 4px 8px;
+      background: #555;
+      color: #fff;
+      font-weight: 600;
+      border-radius: 4px;
+      cursor: pointer;
+      user-select: none;
+      float: right;
+    }
+  </style>
+</head>
+<body>
+  <div class="sidebar" id="sidebar">
+    <h2>Nicosia (Old City) — Quick tour</h2>
+    <div>
+      Click a number on the map, or in this list, to open a short description and directions.
+    </div>
+    <div id="list"></div>
+  </div>
+  <button class="toggle-sidebar" onclick="toggleSidebar()">Hide List</button>
+  <button class="locate-btn" onclick="startLiveLocation()">My Location</button>
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const map = L.map("map").setView([35.1738, 33.3628], 15);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "© OpenStreetMap contributors",
+    }).addTo(map);
+
+    const places = [
+      {
+        id: 1,
+        name: "Famagusta Gate (Venetian Gate)",
+        lat: 35.174461,
+        lon: 33.370908,
+        desc: "One of the main gates in the Venetian walls — impressive Venetian-era architecture and gateway into the walled city.",
+        more: "Famagusta Gate is the largest and most magnificent of the three gates in the Venetian walls of Nicosia. Built in the 16th century, it served as a key defensive and ceremonial entrance to the city. The gate has been restored and now hosts cultural events and exhibitions, making it a symbol of Nicosia’s rich history."
+      },
+      {
+        id: 2,
+        name: "Ledra Street / Crossing",
+        lat: 35.17444,
+        lon: 33.36139,
+        desc: "A bustling pedestrian shopping street; historic crossing point through the Green Line. Great for people-watching and cafes.",
+        more: "Ledra Street is one of the busiest streets in Nicosia’s old town, lined with shops, cafes, and restaurants. It is famous for the Ledra Street crossing point, where visitors can pass between the Republic of Cyprus and the Turkish-controlled northern part, making it a unique place reflecting the island’s divided history."
+      },
+      {
+        id: 3,
+        name: "Büyük Han (Great Inn)",
+        lat: 35.176376,
+        lon: 33.362773,
+        desc: "A restored 16th-century caravanserai with a courtyard full of cafes, craft shops and small galleries — must-see.",
+        more: "Built in 1572 during Ottoman rule, Büyük Han is one of the finest examples of Ottoman architecture in Cyprus. It functioned as an inn for travelers and merchants, providing accommodation and space for trade. Today, it is a lively cultural center with artisan shops, cafes, and art exhibitions."
+      },
+      {
+        id: 4,
+        name: "Selimiye Mosque (former St. Sophia Cathedral)",
+        lat: 35.176389,
+        lon: 33.3625,
+        desc: "Impressive Gothic cathedral converted to a mosque — a striking blend of architectural styles and history.",
+        more: "Originally built as the Cathedral of St. Sophia in the 13th century during Lusignan rule, it was converted into a mosque after the Ottoman conquest in the 16th century. The structure combines Gothic architecture with Islamic features, making it a fascinating site symbolizing Nicosia’s multicultural past."
+      },
+      {
+        id: 5,
+        name: "Shacolas Tower Museum & Observatory",
+        lat: 35.171101,
+        lon: 33.360253,
+        desc: "Visit the observation deck for panoramic views of Nicosia and the buffer zone; small museum inside.",
+        more: "Shacolas Tower offers visitors stunning panoramic views of Nicosia, including the UN Buffer Zone and both the Greek and Turkish sides of the city. The museum inside provides historical context and photographic exhibitions about Nicosia’s division and culture."
+      },
+      {
+        id: 6,
+        name: "Laïki Geitonia (Traditional Neighbourhood)",
+        lat: 35.1699,
+        lon: 33.362285,
+        desc: "Narrow lanes, restored houses, craft shops and tavernas — perfect for a relaxed stroll.",
+        more: "Laïki Geitonia is a charming area in the heart of the old city, preserving traditional Cypriot architecture and lifestyle. Visitors can wander through narrow streets, visit local craft shops, and enjoy authentic Cypriot cuisine in cozy tavernas."
+      },
+      {
+        id: 7,
+        name: "Leventis Municipal Museum",
+        lat: 35.1706,
+        lon: 33.36147,
+        desc: "Local museum telling the history of Nicosia from ancient times to modern days; free entry often available.",
+        more: "The Leventis Municipal Museum offers an extensive collection of artifacts, photographs, and exhibits that narrate the history and culture of Nicosia from prehistoric times to the present. It's a great spot for history enthusiasts."
+      },
+      {
+        id: 8,
+        name: "Ömeriye Mosque & Hamam",
+        lat: 35.171894,
+        lon: 33.365381,
+        desc: "A 16th-century mosque built over a former Augustinian church — near a restored traditional hamam.",
+        more: "The Ömeriye Mosque, built in the 16th century, stands on the site of a former Augustinian church destroyed during the Ottoman conquest. Nearby, a traditional Turkish bath (hamam) has been restored and is a great place to experience local culture and relaxation."
+      }
+    ];
+
+    const markers = [];
+
+    function createMarker(place) {
+      const icon = L.divIcon({
+        className: "marker-number",
+        html: place.id,
+        iconSize: [28, 28],
+        iconAnchor: [14, 28],
+      });
+      const marker = L.marker([place.lat, place.lon], { icon }).addTo(map);
+      marker.bindPopup(createPopupContent(place));
+      marker.on("click", () => {
+        marker.openPopup();
+      });
+      markers.push(marker);
+      return marker;
+    }
+
+    function createPopupContent(place) {
+      return `<b>${place.id}. ${place.name}</b><br>${place.desc}<br><button class="more-btn" onclick="showMore(${place.id})">More info</button>`;
+    }
+
+    function showMore(id) {
+      const place = places.find((p) => p.id === id);
+      if (!place) return;
+      const popup = markers[id - 1].getPopup();
+      popup.setContent(`<b>${place.id}. ${place.name}</b><br>${place.more}<br><button class="close-btn" onclick="closeMore(${place.id})">Close</button>`);
+      markers[id - 1].openPopup();
+    }
+
+    function closeMore(id) {
+      const place = places.find((p) => p.id === id);
+      if (!place) return;
+      const popup = markers[id - 1].getPopup();
+      popup.setContent(createPopupContent(place));
+      markers[id - 1].openPopup();
+    }
+
+    // Create markers
+    places.forEach(createMarker);
+
+    // Populate sidebar list
+    const listEl = document.getElementById("list");
+    places.forEach((place) => {
+      const div = document.createElement("div");
+      div.className = "place";
+      div.innerHTML = `<b>${place.id}. ${place.name}</b><br>${place.desc}`;
+      div.onclick = () => {
+        map.setView([place.lat, place.lon], 17);
+        markers[place.id - 1].openPopup();
+      };
+      listEl.appendChild(div);
+    });
+
+    // Sidebar toggle
+    const sidebar = document.getElementById("sidebar");
+    const toggleBtn = document.querySelector(".toggle-sidebar");
+    let sidebarVisible = true;
+    function toggleSidebar() {
+      if (sidebarVisible) {
+        sidebar.style.transform = "translateX(-350px)";
+        toggleBtn.textContent = "Show List";
+      } else {
+        sidebar.style.transform = "translateX(0)";
+        toggleBtn.textContent = "Hide List";
+      }
+      sidebarVisible = !sidebarVisible;
+    }
+
+    // Live location button
+    function startLiveLocation() {
+      if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your browser.");
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const latlng = [pos.coords.latitude, pos.coords.longitude];
+          map.setView(latlng, 16);
+          L.circle(latlng, { radius: 20, color: "blue" }).addTo(map).bindPopup("You are here").openPopup();
+        },
+        () => alert("Unable to retrieve your location.")
+      );
+    }
+  </script>
+</body>
+</html>
